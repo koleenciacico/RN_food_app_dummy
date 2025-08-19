@@ -1,7 +1,62 @@
+import type { CreateUserParams, SignInParams } from "@/type";
+import { Account, Avatars, Client, Databases, ID } from "react-native-appwrite";
 
 export const appwriteConfig = {
     endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
     projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
-    platform: "com.rn.foodapp_dummy"
-    
+    platform: "com.rn.foodapp_dummy",
+    databaseId: '689c6f71003d9ddad075',
+    userCollectionId: '689c6fd50024d03d07a3'
+}
+
+export const client = new Client();
+
+client 
+    .setEndpoint(appwriteConfig.endpoint!)
+    .setProject(appwriteConfig.projectId!)
+    .setPlatform(appwriteConfig.platform)
+
+export const account = new Account (client);
+export const databases = new Databases (client);
+export const avatars = new Avatars(client);
+
+
+export const createUser =  async ({email, password, name}: CreateUserParams) => {
+    try {
+        const newAccount = await account.create(ID.unique(), email, password, name)
+
+        if (!newAccount) throw Error;
+
+        await signIn({email, password}); //auth the acct if already existed then will auto signIn
+
+
+        const avatarUrl = avatars.getInitialsURL(name);
+
+        /* if in webstorm created localvar ex. newUser is redundant u you can use
+       return and remove this such as const newUser = */
+
+        const newUser = await databases.createDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.userCollectionId,
+            ID.unique(),
+            {  accountId: newAccount.$id, email, name, avatar: avatarUrl }
+
+        );
+
+        return newUser; // then remove this after using return above
+
+    } catch (e){ // e stands for error an abbrv.
+        throw new Error(e as string);
+    }
+}
+
+
+export const signIn = async ({email, password}: SignInParams) => {
+        try {
+
+            const session = await account.createEmailPasswordSession(email, password);
+            
+        } catch (e) {
+            throw new Error(e as string);
+        }
 }
